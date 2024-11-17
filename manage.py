@@ -3,10 +3,13 @@
 import os
 import sys
 
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def main():
     """Run administrative tasks."""
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings.development')
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', f'{os.environ["DJANGO_SETTINGS_MODULE"]}')
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
