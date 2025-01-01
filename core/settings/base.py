@@ -36,7 +36,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'accounts',
     'corsheaders',
-
+    'projects',
+    'ai_textgen',
 
 ]
 
