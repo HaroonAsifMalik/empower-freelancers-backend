@@ -2,13 +2,15 @@ import requests
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
+import subprocess
+from django.shortcuts import render
+from django.views.decorators.csrf import csrf_exempt
 
 
 @csrf_exempt
 def interact_with_ollama(request):
     if request.method == "POST":
         try:
-            # Parse the incoming JSON payload
             data = json.loads(request.body)
             user_prompt = data.get("prompt", "")
             if not user_prompt:
@@ -20,7 +22,6 @@ def interact_with_ollama(request):
             response = requests.post(OLLAMA_API_URL, headers=headers, json=payload)
 
             if response.status_code == 200:
-                # Handle multi-line JSON response
                 results = []
                 for line in response.text.strip().split("\n"):
                     try:
@@ -50,3 +51,19 @@ def interact_with_ollama(request):
             )
     else:
         return JsonResponse({"error": "Invalid request method"}, status=405)
+
+
+@csrf_exempt
+def run_web_scrap(request):
+    try:
+        result = subprocess.run(
+            ["python3", "web_scrap.py"], capture_output=True, text=True
+        )
+
+        if result.returncode == 0:
+            return JsonResponse({"status": "success", "output": result.stdout})
+        else:
+            return JsonResponse({"status": "error", "message": result.stderr})
+
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)})
