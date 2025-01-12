@@ -5,6 +5,8 @@ from django.conf import settings
 from django.contrib.auth import authenticate
 from accounts.models import CustomUser
 
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
 class UserSignInSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -24,35 +26,27 @@ class SignUpSerializer(serializers.ModelSerializer):
     confirm_password = serializers.CharField(write_only=True)
 
     class Meta:
-        model = CustomUser
-        fields = ['email', 'display_name', 'password', 'confirm_password']
+        model = User
+        fields = ["email", "display_name", "password", "confirm_password"]
 
     def validate(self, data):
-        if data['password'] != data['confirm_password']:
+        if data["password"] != data["confirm_password"]:
             raise serializers.ValidationError({"password": "Passwords do not match"})
         return data
 
     def create(self, validated_data):
-        validated_data.pop('confirm_password')
-        user = CustomUser.objects.create_user(
-            email=validated_data['email'],
-            display_name=validated_data['display_name'],
-            password=validated_data['password']
-        )
-        # Generate tokens for the user
+        validated_data.pop("confirm_password")
+        user = User.objects.create_user(**validated_data)
         refresh = RefreshToken.for_user(user)
-        return {
-            'user': user,
-            'access': str(refresh.access_token),
-            'refresh': str(refresh)
-        }
+        return user
+
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
 
     class Meta:
-        model = CustomUser
+        model = User
         fields = [
             'id',
             'email',

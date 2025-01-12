@@ -12,20 +12,11 @@ class SignUp(APIView):
     def post(self, request):
         serializer = SignUpSerializer(data=request.data)
         if serializer.is_valid():
-            result = serializer.save()
-            user = result['user']
-            return Response(
-                {
-                    "message": "User registered successfully",
-                    "user": {
-                        "email": user.email,
-                        "display_name": user.display_name,
-                    },
-                    "access": result['access'],
-                    "refresh": result['refresh']
-                },
-                status=status.HTTP_201_CREATED
-            )
+            user = serializer.save()
+            token = get_tokens_for_user(user)
+            user_data = CustomUserSerializer(user, context={'request':request}).data
+            print(user_data)
+            return Response({"user": user_data, **token}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
