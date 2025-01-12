@@ -1,25 +1,22 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
-
+from django.conf import settings
+from django.contrib.auth import authenticate
 from accounts.models import CustomUser
 
 
-class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    @classmethod
-    def get_token(cls, user):
-        token = super().get_token(user)
-        return token
+class UserSignInSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
 
-    def validate(self, attrs):
-        data = super().validate(attrs)
-        data["access"] = data.get("access")
-        data["refresh"] = data.get("refresh")
-
-        user_data = CustomUserSerializer(self.user).data
-        data["user"] = user_data
-
-        return data
+    def validate(self, data):
+        user = authenticate(email=data["email"], password=data["password"])
+        if not user:
+            raise serializers.ValidationError("Invalid email or password.")
+        if not user.is_active:
+            raise serializers.ValidationError("User account is disabled.")
+        return {"user": user}
 
 
 class SignUpSerializer(serializers.ModelSerializer):
@@ -52,6 +49,28 @@ class SignUpSerializer(serializers.ModelSerializer):
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
     class Meta:
         model = CustomUser
-        fields = ['id', 'email', 'display_name']
+        fields = [
+            'id',
+            'email',
+            'display_name',
+            'image_url',
+            'accounts',
+            'response_time',
+            'rating',
+            'job_success_rate',
+            'skills',
+            'categories',
+        ]
+
+    def get_image_url(self, obj):
+        if obj.image:
+            request = self.context.get('request')
+            image_url = obj.image.url
+            if request is not None:
+                return request.build_absolute_uri(image_url)
+            return f"{settings.MEDIA_URL}{image_url}"
+        return None
