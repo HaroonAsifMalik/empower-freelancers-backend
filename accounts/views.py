@@ -4,29 +4,19 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
-
-from accounts.serializers import (CustomTokenObtainPairSerializer,
-                                  SignUpSerializer)
+from accounts.utils import *
+from accounts.serializers import *
 
 
 class SignUp(APIView):
     def post(self, request):
         serializer = SignUpSerializer(data=request.data)
         if serializer.is_valid():
-            result = serializer.save()
-            user = result['user']
-            return Response(
-                {
-                    "message": "User registered successfully",
-                    "user": {
-                        "email": user.email,
-                        "display_name": user.display_name,
-                    },
-                    "access": result['access'],
-                    "refresh": result['refresh']
-                },
-                status=status.HTTP_201_CREATED
-            )
+            user = serializer.save()
+            token = get_tokens_for_user(user)
+            user_data = CustomUserSerializer(user, context={'request':request}).data
+            print(user_data)
+            return Response({"user": user_data, **token}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -61,5 +51,23 @@ class LogOut(APIView):
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-class CustomTokenObtainPairView(TokenObtainPairView):
-    serializer_class = CustomTokenObtainPairSerializer
+class SignIn(APIView):
+    def post(self, request):
+        try:
+            data = request.data
+            serializer = UserSignInSerializer(data=data)
+            if serializer.is_valid():
+                user = serializer.validated_data["user"]
+                token = get_tokens_for_user(user)
+                user_data = CustomUserSerializer(user, context={'request':request}).data
+                return Response({"user": user_data, **token}, status=status.HTTP_200_OK)
+            else:
+                return Response(
+                    {
+                        "error": "Invalid login credentials",
+                        "details": serializer.errors,
+                    },
+                    status=400,
+                )
+        except Exception as e:
+            return Response(str(e))
